@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      sql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          SA_PASSWORD: YourStrong!Passw0rd
+          ACCEPT_EULA: Y
+        ports:
+          - 1433:1433
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: RiteSwipe.Web/package-lock.json
+
+    - name: Restore .NET dependencies
+      run: dotnet restore
+
+    - name: Build .NET
+      run: dotnet build --no-restore --configuration Release
+
+    - name: Run .NET tests
+      run: dotnet test --no-build --configuration Release --verbosity normal
+      env:
+        ConnectionStrings__DefaultConnection: Server=localhost;Database=RiteSwipe;User=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True
+        JwtSettings__Secret: ${{ secrets.JWT_SECRET }}
+
+    - name: Install frontend dependencies
+      run: |
+        cd RiteSwipe.Web
+        npm ci
+
+    - name: Build frontend
+      run: |
+        cd RiteSwipe.Web
+        npm run build
+
+    - name: Run frontend tests
+      run: |
+        cd RiteSwipe.Web
+        npm test -- --watchAll=false
+
+    - name: Run ESLint
+      run: |
+        cd RiteSwipe.Web
+        npm run lint
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results
+        path: |
+          **/TestResults
+          RiteSwipe.Web/coverage
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-artifacts
+        path: |
+          **/bin/Release/
+          RiteSwipe.Web/build/

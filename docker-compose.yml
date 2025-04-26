@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:80"
+      - "5001:443"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Server=db;Database=RiteSwipe;User=sa;Password=${DB_PASSWORD};TrustServerCertificate=True
+      - JwtSettings__Secret=${JWT_SECRET}
+      - CORS__Origins=${CORS_ORIGINS}
+    depends_on:
+      - db
+    networks:
+      - riteswipe-network
+
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=${DB_PASSWORD}
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqldata:/var/opt/mssql
+    networks:
+      - riteswipe-network
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - riteswipe-network
+
+networks:
+  riteswipe-network:
+    driver: bridge
+
+volumes:
+  sqldata:

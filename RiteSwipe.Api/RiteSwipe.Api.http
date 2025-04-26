@@ -1,0 +1,6 @@
+@RiteSwipe.Api_HostAddress = http://localhost:5296
+
+GET {{RiteSwipe.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
